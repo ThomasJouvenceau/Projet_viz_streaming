@@ -1,4 +1,4 @@
-const margin = { top: 40, right: 30, bottom: 60, left: 60 };
+const margin = { top: 40, right: 30, bottom: 80, left: 60 };
 const width = 450 - margin.left - margin.right;
 const height = 350 - margin.top - margin.bottom;
 
@@ -39,38 +39,33 @@ d3.csv("data/streaming_catalog.csv").then(function(data) {
             filteredData = filteredData.filter(d => d.primary_genre === selectedGenre);
         }
 
-        // Données pour Bar Chart
+        d3.select("#bar-chart").html(""); 
+        d3.select("#donut-chart").html(""); 
+        d3.select("#line-chart").html("");
+
         const platformCounts = d3.rollup(filteredData, v => v.length, d => d.platform);
         const barData = Array.from(platformCounts, ([platform, total_titles]) => ({platform, total_titles}))
-                             .sort((a, b) => b.total_titles - a.total_titles); // Tri décroissant
+                             .filter(d => d.platform && d.platform !== "NaN")
+                             .sort((a, b) => b.total_titles - a.total_titles);
+        if (barData.length > 0) drawBarChart(barData);
 
-        // Données pour Donut Chart
         const genreCounts = d3.rollup(filteredData, v => v.length, d => d.primary_genre);
         let genreData = Array.from(genreCounts, ([genre, count]) => ({genre, count}))
                              .filter(d => d.genre && d.genre !== "NaN")
                              .sort((a, b) => b.count - a.count);
-
+        
         const topGenres = genreData.slice(0, 5);
         if (genreData.length > 5) {
             const othersCount = d3.sum(genreData.slice(5), d => d.count);
             topGenres.push({ genre: "Autres", count: othersCount });
         }
+        if (topGenres.length > 0) drawDonutChart(topGenres);
 
-        // Données pour Line Chart
         const yearCounts = d3.rollup(filteredData, v => v.length, d => d.release_year);
         const lineData = Array.from(yearCounts, ([release_year, total_titles]) => ({release_year, total_titles}))
                              .filter(d => d.release_year > 1900)
                              .sort((a, b) => a.release_year - b.release_year);
-
-        // Effacer les anciens graphiques
-        d3.select("#bar-chart").html(""); 
-        d3.select("#donut-chart").html(""); 
-        d3.select("#line-chart").html("");
-
-        // Dessiner les 3 graphiques
         if (lineData.length > 0) drawLineChart(lineData);
-        if (barData.length > 0) drawBarChart(barData);
-        if (topGenres.length > 0) drawDonutChart(topGenres);
     }
 
     d3.selectAll("select").on("change", updateDashboard);
@@ -210,7 +205,7 @@ function drawDonutChart(data) {
         .style("font-size", "11px")
         .style("font-weight", "bold")
         .style("fill", "#333")
-        .text(d => `${d.data.genre} (${d.data.count})`); 
+        .text(d => d.data.genre + " (" + d.data.count + ")");
 
     svg.append("text")
         .attr("x", 0)
