@@ -4,50 +4,38 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Analyse Data Viz - Streaming</title>
-    
-    <!-- LIAISON CSS : Charge le style avant le contenu -->
     <link rel="stylesheet" href="style.css">
-    
-    <!-- BIBLIOTHÈQUE D3.js : Indispensable pour que le main.js fonctionne -->
     <script src="https://d3js.org/d3.v7.min.js"></script>
 </head>
 <body>
 
     <h1>Tableau de Bord du Streaming Mondial</h1>
 
-    <!-- SECTION FILTRES (Optionnelle pour l'instant mais prête pour la suite) -->
     <div id="controls">
-        <label for="platformSelect">Filtrer par plateforme :</label>
-        <select id="platformSelect">
-            <option value="All">Toutes les plateformes</option>
-            <option value="Netflix">Netflix</option>
-            <option value="Disney+">Disney+</option>
-            <option value="Prime Video">Prime Video</option>
-            <option value="Hulu">Hulu</option>
-        </select>
+        <label for="platformSelect">Plateforme :</label>
+        <select id="platformSelect"><option value="All">Toutes</option></select>
+
+        <label for="countrySelect" style="margin-left: 20px;">Pays :</label>
+        <select id="countrySelect"><option value="All">Tous</option></select>
+
+        <label for="genreSelect" style="margin-left: 20px;">Genre :</label>
+        <select id="genreSelect"><option value="All">Tous</option></select>
     </div>
 
-    <!-- SECTION GRAPHIQUES : Les IDs doivent correspondre au main.js -->
     <div class="dashboard">
-        <div id="line-chart">
-            <!-- D3 va injecter le SVG ici -->
-        </div>
-        <div id="bar-chart">
-            <!-- D3 va injecter le SVG ici -->
-        </div>
+        <div id="line-chart"></div>
+        <div id="bar-chart"></div>
     </div>
 
-    <!-- DOCUMENTATION : Requis par ton projet -->
     <div style="margin-top: 50px; padding: 20px; background: #eee; border-radius: 8px;">
         <h3>Documentation brève</h3>
         <p>Ce projet visualise les tendances de sortie des catalogues de streaming mondiaux en utilisant <strong>D3.js</strong>.</p>
         <ul>
-            <li><strong>Graphique de gauche :</strong> Évolution temporelle des sorties de films/séries.</li>
-            <li><strong>Graphique de droite :</strong> Comparaison du volume total par plateforme.</li>
+            <li><strong>Graphique de gauche :</strong> Évolution temporelle des sorties.</li>
+            <li><strong>Graphique de droite :</strong> Volume de contenu par plateforme.</li>
         </ul>
     </div>
 
-    <!-- LIAISON JS : Doit être placé à la fin pour que le HTML soit chargé avant l'exécution du script -->
     <script src="main.js"></script>
 
 </body>
