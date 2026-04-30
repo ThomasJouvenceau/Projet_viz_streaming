@@ -6,6 +6,7 @@ d3.csv("data/streaming_catalog.csv").then(function(data) {
     
     data.forEach(d => {
         d.release_year = +d.release_year;
+        d.imdb_rating = +d.imdb_rating;
     });
 
     const platforms = [...new Set(data.map(d => d.platform))].filter(Boolean).sort();
@@ -27,139 +28,141 @@ d3.csv("data/streaming_catalog.csv").then(function(data) {
         const selectedPlatform = d3.select("#platformSelect").property("value");
         const selectedCountry = d3.select("#countrySelect").property("value");
         const selectedGenre = d3.select("#genreSelect").property("value");
+        const selectedType = d3.select("#typeSelect").property("value");
+        const yearStart = +d3.select("#yearStart").property("value");
+        const yearEnd = +d3.select("#yearEnd").property("value");
 
-        let filteredData = data;
-        if (selectedPlatform !== "All") {
-            filteredData = filteredData.filter(d => d.platform === selectedPlatform);
-        }
-        if (selectedCountry !== "All") {
-            filteredData = filteredData.filter(d => d.country === selectedCountry);
-        }
-        if (selectedGenre !== "All") {
-            filteredData = filteredData.filter(d => d.primary_genre === selectedGenre);
-        }
+        let filteredData = data.filter(d => d.release_year >= yearStart && d.release_year <= yearEnd);
 
-        d3.select("#bar-chart").html(""); 
+        if (selectedPlatform !== "All") filteredData = filteredData.filter(d => d.platform === selectedPlatform);
+        if (selectedCountry !== "All") filteredData = filteredData.filter(d => d.country === selectedCountry);
+        if (selectedGenre !== "All") filteredData = filteredData.filter(d => d.primary_genre === selectedGenre);
+        if (selectedType !== "All") filteredData = filteredData.filter(d => d.type === selectedType);
+
+        d3.select("#stacked-bar-chart").html(""); 
         d3.select("#donut-chart").html(""); 
         d3.select("#line-chart").html("");
+        d3.select("#scatter-plot").html("");
 
-        const platformCounts = d3.rollup(filteredData, v => v.length, d => d.platform);
-        const barData = Array.from(platformCounts, ([platform, total_titles]) => ({platform, total_titles}))
-                             .filter(d => d.platform && d.platform !== "NaN")
-                             .sort((a, b) => b.total_titles - a.total_titles);
-        if (barData.length > 0) drawBarChart(barData);
+        // 1. Line Chart (Tendances)
+        const yearCounts = d3.rollup(filteredData, v => v.length, d => d.release_year);
+        const lineData = Array.from(yearCounts, ([release_year, total_titles]) => ({release_year, total_titles}))
+                             .filter(d => d.release_year >= yearStart && d.release_year <= yearEnd)
+                             .sort((a, b) => a.release_year - b.release_year);
+        if (lineData.length > 0) drawLineChart(lineData);
 
-        const genreCounts = d3.rollup(filteredData, v => v.length, d => d.primary_genre);
-        let genreData = Array.from(genreCounts, ([genre, count]) => ({genre, count}))
-                             .filter(d => d.genre && d.genre !== "NaN")
-                             .sort((a, b) => b.count - a.count);
+        // 2. Stacked Bar Chart (Plateformes)
+        if (selectedPlatform === "All") {
+            d3.select("#stacked-bar-chart").style("display", "block");
+            
+            const platformsData = Array.from(d3.group(filteredData, d => d.platform), ([platform, values]) => {
+                const movies = values.filter(v => v.type === "Movie").length;
+                const shows = values.filter(v => v.type === "TV Show").length;
+                return { platform, Movie: movies, "TV Show": shows, total: movies + shows };
+            }).filter(d => d.platform && d.platform !== "NaN").sort((a,b) => b.total - a.total);
+            
+            if (platformsData.length > 0) drawStackedBarChart(platformsData);
+        } else {
+            d3.select("#stacked-bar-chart").style("display", "none");
+        }
+
+        // 3. Scatter Plot (Qualité vs Quantité par Genre)
+        const genreStats = Array.from(d3.group(filteredData, d => d.primary_genre), ([genre, values]) => {
+            const count = values.length;
+            const validRatings = values.filter(v => v.imdb_rating > 0);
+            const avgImdb = validRatings.length > 0 ? d3.mean(validRatings, d => d.imdb_rating) : 0;
+            return { genre, count, avgImdb };
+        }).filter(d => d.genre && d.genre !== "NaN" && d.avgImdb > 0);
         
+        if (genreStats.length > 0) drawScatterPlot(genreStats);
+
+        // 4. Donut Chart (Top Genres)
+        let genreData = [...genreStats].sort((a, b) => b.count - a.count);
         const topGenres = genreData.slice(0, 5);
         if (genreData.length > 5) {
             const othersCount = d3.sum(genreData.slice(5), d => d.count);
             topGenres.push({ genre: "Autres", count: othersCount });
         }
         if (topGenres.length > 0) drawDonutChart(topGenres);
-
-        const yearCounts = d3.rollup(filteredData, v => v.length, d => d.release_year);
-        const lineData = Array.from(yearCounts, ([release_year, total_titles]) => ({release_year, total_titles}))
-                             .filter(d => d.release_year > 1900)
-                             .sort((a, b) => a.release_year - b.release_year);
-        if (lineData.length > 0) drawLineChart(lineData);
     }
 
-    d3.selectAll("select").on("change", updateDashboard);
+    d3.selectAll("select, input").on("change", updateDashboard);
     updateDashboard();
 
-}).catch(err => {
-    console.error("Erreur lors du chargement des données : ", err);
-});
+}).catch(err => console.error("Erreur : ", err));
 
 function drawLineChart(data) {
-    const svg = d3.select("#line-chart")
-        .append("svg")
+    const svg = d3.select("#line-chart").append("svg")
         .attr("width", width + margin.left + margin.right)
         .attr("height", height + margin.top + margin.bottom)
-        .append("g")
-        .attr("transform", `translate(${margin.left},${margin.top})`);
+        .append("g").attr("transform", `translate(${margin.left},${margin.top})`);
 
-    const x = d3.scaleLinear()
-        .domain(d3.extent(data, d => d.release_year))
-        .range([0, width]);
+    const x = d3.scaleLinear().domain(d3.extent(data, d => d.release_year)).range([0, width]);
+    const y = d3.scaleLinear().domain([0, d3.max(data, d => d.total_titles) || 10]).range([height, 0]);
 
-    const y = d3.scaleLinear()
-        .domain([0, d3.max(data, d => d.total_titles) || 10])
-        .range([height, 0]);
+    svg.append("path").datum(data).attr("fill", "none").attr("stroke", "#e15759")
+       .attr("stroke-width", 2).attr("d", d3.line().x(d => x(d.release_year)).y(d => y(d.total_titles)));
 
-    const line = d3.line()
-        .x(d => x(d.release_year))
-        .y(d => y(d.total_titles));
-
-    svg.append("path")
-        .datum(data)
-        .attr("fill", "none")
-        .attr("stroke", "#e15759")
-        .attr("stroke-width", 2)
-        .attr("d", line);
-
-    svg.append("g")
-        .attr("transform", `translate(0,${height})`)
-        .call(d3.axisBottom(x).tickFormat(d3.format("d")));
-
+    svg.append("g").attr("transform", `translate(0,${height})`).call(d3.axisBottom(x).tickFormat(d3.format("d")));
     svg.append("g").call(d3.axisLeft(y));
-
-    svg.append("text")
-        .attr("x", width / 2)
-        .attr("y", -10)
-        .attr("text-anchor", "middle")
-        .style("font-size", "14px")
-        .style("fill", "#666")
-        .text("Évolution annuelle filtrée");
+    svg.append("text").attr("x", width/2).attr("y", -10).attr("text-anchor", "middle").text("Évolution annuelle");
 }
 
-function drawBarChart(data) {
-    const svg = d3.select("#bar-chart")
-        .append("svg")
+function drawStackedBarChart(data) {
+    const svg = d3.select("#stacked-bar-chart").append("svg")
         .attr("width", width + margin.left + margin.right)
         .attr("height", height + margin.top + margin.bottom)
-        .append("g")
-        .attr("transform", `translate(${margin.left},${margin.top})`);
+        .append("g").attr("transform", `translate(${margin.left},${margin.top})`);
 
-    const x = d3.scaleBand()
-        .domain(data.map(d => d.platform))
-        .range([0, width])
-        .padding(0.2);
+    const keys = ["Movie", "TV Show"];
+    const stack = d3.stack().keys(keys)(data);
+    const color = d3.scaleOrdinal().domain(keys).range(["#4e79a7", "#f28e2c"]);
 
-    const y = d3.scaleLinear()
-        .domain([0, d3.max(data, d => d.total_titles) || 10])
-        .range([height, 0]);
+    const x = d3.scaleBand().domain(data.map(d => d.platform)).range([0, width]).padding(0.2);
+    const y = d3.scaleLinear().domain([0, d3.max(data, d => d.total) || 10]).range([height, 0]);
 
-    svg.selectAll("rect")
-        .data(data)
-        .enter()
-        .append("rect")
-        .attr("x", d => x(d.platform))
-        .attr("y", d => y(d.total_titles))
-        .attr("width", x.bandwidth())
-        .attr("height", d => height - y(d.total_titles))
-        .attr("fill", "#4e79a7");
+    svg.append("g").selectAll("g").data(stack).enter().append("g").attr("fill", d => color(d.key))
+       .selectAll("rect").data(d => d).enter().append("rect")
+       .attr("x", d => x(d.data.platform)).attr("y", d => y(d[1]))
+       .attr("height", d => y(d[0]) - y(d[1])).attr("width", x.bandwidth());
 
-    svg.append("g")
-        .attr("transform", `translate(0,${height})`)
-        .call(d3.axisBottom(x))
-        .selectAll("text")
-        .attr("transform", "rotate(-45)")
-        .style("text-anchor", "end");
+    svg.append("g").attr("transform", `translate(0,${height})`).call(d3.axisBottom(x))
+       .selectAll("text").attr("transform", "rotate(-45)").style("text-anchor", "end");
+    svg.append("g").call(d3.axisLeft(y));
+    svg.append("text").attr("x", width/2).attr("y", -10).attr("text-anchor", "middle").text("Films vs Séries par Plateforme");
 
+    // Légende
+    const legend = svg.append("g").attr("transform", `translate(${width - 80}, 0)`);
+    keys.forEach((key, i) => {
+        const legendRow = legend.append("g").attr("transform", `translate(0, ${i * 20})`);
+        legendRow.append("rect").attr("width", 10).attr("height", 10).attr("fill", color(key));
+        legendRow.append("text").attr("x", 20).attr("y", 10).text(key === "Movie" ? "Films" : "Séries");
+    });
+}
+
+function drawScatterPlot(data) {
+    const svg = d3.select("#scatter-plot").append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+    const x = d3.scaleLinear().domain([0, d3.max(data, d => d.count) * 1.1]).range([0, width]);
+    const y = d3.scaleLinear().domain([d3.min(data, d => d.avgImdb) - 0.5, 10]).range([height, 0]);
+
+    svg.append("g").attr("transform", `translate(0,${height})`).call(d3.axisBottom(x));
     svg.append("g").call(d3.axisLeft(y));
 
-    svg.append("text")
-        .attr("x", width / 2)
-        .attr("y", -10)
-        .attr("text-anchor", "middle")
-        .style("font-size", "14px")
-        .style("fill", "#666")
-        .text("Volume de contenu par plateforme");
+    svg.selectAll("circle").data(data).enter().append("circle")
+       .attr("cx", d => x(d.count)).attr("cy", d => y(d.avgImdb))
+       .attr("r", 5).attr("fill", "#76b7b2").attr("opacity", 0.7);
+
+    svg.selectAll(".label").data(data.filter(d => d.count > d3.max(data, v => v.count) * 0.1)).enter().append("text")
+       .attr("class", "label").attr("x", d => x(d.count) + 8).attr("y", d => y(d.avgImdb) + 4)
+       .text(d => d.genre).style("font-size", "10px");
+
+    svg.append("text").attr("x", width/2).attr("y", height + 40).style("text-anchor", "middle").text("Volume de titres");
+    svg.append("text").attr("transform", "rotate(-90)").attr("x", -height/2).attr("y", -40).style("text-anchor", "middle").text("Note IMDb Moyenne");
+    svg.append("text").attr("x", width/2).attr("y", -10).attr("text-anchor", "middle").text("Qualité vs Quantité (par Genre)");
 }
 
 function drawDonutChart(data) {
@@ -167,51 +170,18 @@ function drawDonutChart(data) {
     const fullHeight = height + margin.top + margin.bottom;
     const radius = Math.min(fullWidth, fullHeight) / 2 - 40; 
 
-    const svg = d3.select("#donut-chart")
-        .append("svg")
-        .attr("width", fullWidth)
-        .attr("height", fullHeight)
-        .append("g")
-        .attr("transform", `translate(${fullWidth / 2}, ${fullHeight / 2 + 10})`);
+    const svg = d3.select("#donut-chart").append("svg")
+        .attr("width", fullWidth).attr("height", fullHeight)
+        .append("g").attr("transform", `translate(${fullWidth / 2}, ${fullHeight / 2 + 10})`);
 
+    const pie = d3.pie().value(d => d.count).sort(null);
+    const arc = d3.arc().innerRadius(radius * 0.5).outerRadius(radius * 0.8);
     const color = d3.scaleOrdinal(d3.schemeTableau10);
 
-    const pie = d3.pie()
-        .value(d => d.count)
-        .sort(null);
+    const arcs = svg.selectAll("arc").data(pie(data)).enter().append("g");
+    arcs.append("path").attr("d", arc).attr("fill", d => color(d.data.genre)).attr("stroke", "white").style("stroke-width", "2px");
+    arcs.append("text").attr("transform", d => `translate(${arc.centroid(d)[0] * 1.5}, ${arc.centroid(d)[1] * 1.5})`)
+        .attr("text-anchor", "middle").style("font-weight", "bold").text(d => `${d.data.genre} (${d.data.count})`);
 
-    const arc = d3.arc()
-        .innerRadius(radius * 0.5)
-        .outerRadius(radius * 0.8);
-
-    const arcs = svg.selectAll("arc")
-        .data(pie(data))
-        .enter()
-        .append("g");
-
-    arcs.append("path")
-        .attr("d", arc)
-        .attr("fill", d => color(d.data.genre))
-        .attr("stroke", "white")
-        .style("stroke-width", "2px")
-        .style("opacity", 0.9);
-
-    arcs.append("text")
-        .attr("transform", function(d) {
-            const pos = arc.centroid(d);
-            return `translate(${pos[0] * 1.5}, ${pos[1] * 1.5})`; 
-        })
-        .attr("text-anchor", "middle")
-        .style("font-size", "11px")
-        .style("font-weight", "bold")
-        .style("fill", "#333")
-        .text(d => d.data.genre + " (" + d.data.count + ")");
-
-    svg.append("text")
-        .attr("x", 0)
-        .attr("y", - (fullHeight / 2) + 15)
-        .attr("text-anchor", "middle")
-        .style("font-size", "14px")
-        .style("fill", "#666")
-        .text("Répartition des genres (Top 5)");
+    svg.append("text").attr("x", 0).attr("y", - (fullHeight / 2) + 15).attr("text-anchor", "middle").text("Top 5 Genres");
 }

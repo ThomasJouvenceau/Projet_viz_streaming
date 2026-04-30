@@ -17,20 +17,27 @@ h1 {
     padding: 15px;
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    width: fit-content;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    align-items: center;
+    justify-content: center;
     margin: 0 auto 30px auto;
 }
 
 #controls label {
     font-weight: bold;
-    margin-right: 10px;
 }
 
-select {
+select, input[type="number"] {
     padding: 8px;
     border-radius: 4px;
     border: 1px solid #ccc;
     cursor: pointer;
+}
+
+input[type="number"] {
+    width: 70px;
 }
 
 .dashboard {
@@ -40,25 +47,24 @@ select {
     gap: 20px;
 }
 
-#line-chart, #bar-chart, #donut-chart {
+.dashboard > div {
     background: white;
     padding: 20px;
     border-radius: 8px;
     box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    flex: 1 1 30%;
-    min-width: 400px; 
+    flex: 1 1 45%;
+    min-width: 400px;
 }
 
 svg text {
-    font-size: 12px;
+    font-size: 11px;
     fill: #666;
-}
-
-rect:hover {
-    fill: #2980b9;
-    transition: fill 0.2s;
 }
 
 path {
     transition: stroke-dashoffset 2s;
+}
+
+.legend text {
+    font-size: 12px;
 }

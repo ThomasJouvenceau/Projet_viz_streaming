@@ -15,26 +15,39 @@
         <label for="platformSelect">Plateforme :</label>
         <select id="platformSelect"><option value="All">Toutes</option></select>
 
-        <label for="countrySelect" style="margin-left: 20px;">Pays :</label>
+        <label for="countrySelect">Pays :</label>
         <select id="countrySelect"><option value="All">Tous</option></select>
 
-        <label for="genreSelect" style="margin-left: 20px;">Genre :</label>
+        <label for="genreSelect">Genre :</label>
         <select id="genreSelect"><option value="All">Tous</option></select>
+
+        <label for="typeSelect">Format :</label>
+        <select id="typeSelect">
+            <option value="All">Tous</option>
+            <option value="Movie">Films</option>
+            <option value="TV Show">Séries</option>
+        </select>
+
+        <label for="yearStart">Période :</label>
+        <input type="number" id="yearStart" value="1980" min="1900" max="2026" step="1">
+        <span> à </span>
+        <input type="number" id="yearEnd" value="2026" min="1900" max="2026" step="1">
     </div>
 
     <div class="dashboard">
         <div id="line-chart"></div>
-        <div id="bar-chart"></div>
+        <div id="stacked-bar-chart"></div>
+        <div id="scatter-plot"></div>
         <div id="donut-chart"></div>
     </div>
 
     <div style="margin-top: 50px; padding: 20px; background: #eee; border-radius: 8px;">
-        <h3>Documentation brève</h3>
-        <p>Ce projet visualise les tendances de sortie des catalogues de streaming mondiaux en utilisant <strong>D3.js</strong>.</p>
+        <h3>Documentation</h3>
         <ul>
-            <li><strong>Graphique 1 :</strong> Évolution temporelle des sorties.</li>
-            <li><strong>Graphique 2 :</strong> Volume de contenu par plateforme.</li>
-            <li><strong>Graphique 3 :</strong> Répartition du Top 5 des genres avec volumes.</li>
+            <li><strong>Évolution temporelle :</strong> Sorties par année.</li>
+            <li><strong>Barres empilées (Toutes plateformes uniquement) :</strong> Volume par plateforme divisé entre Films et Séries.</li>
+            <li><strong>Nuage de points :</strong> Relation entre le volume (Quantité) et la note moyenne IMDb (Qualité) par genre.</li>
+            <li><strong>Donut Chart :</strong> Top 5 des genres pour la sélection active.</li>
         </ul>
     </div>
 
