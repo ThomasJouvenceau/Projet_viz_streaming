@@ -13,11 +13,15 @@ Promise.all(files.map(url => d3.csv(url))).then(function(values) {
     const platformData = values[0];
     const trendsData = values[1];
 
-    // Nettoyage des données (conversion texte -> nombre)
-    platformData.forEach(d => d.count = +d.count);
+    // Nettoyage des données : conversion texte -> nombre
+    // On utilise ici le vrai nom de ta colonne : "total_titles"
+    platformData.forEach(d => {
+        d.total_titles = +d.total_titles; 
+    });
+    
     trendsData.forEach(d => {
         d.release_year = +d.release_year;
-        d.count = +d.count;
+        d.total_titles = +d.total_titles;
     });
 
     console.log("Données chargées et nettoyées !");
@@ -30,7 +34,8 @@ Promise.all(files.map(url => d3.csv(url))).then(function(values) {
     console.error("Erreur lors du chargement des données : ", err);
 });
 
-// --- FONCTION : GRAPHIQUE À BARRES (Platformes) ---
+
+// --- FONCTION : GRAPHIQUE À BARRES (Plateformes) ---
 function drawBarChart(data) {
     const svg = d3.select("#bar-chart")
         .append("svg")
@@ -46,7 +51,7 @@ function drawBarChart(data) {
         .padding(0.2);
 
     const y = d3.scaleLinear()
-        .domain([0, d3.max(data, d => d.count)])
+        .domain([0, d3.max(data, d => d.total_titles)]) // Changé ici
         .range([height, 0]);
 
     // Dessin des barres
@@ -55,9 +60,9 @@ function drawBarChart(data) {
         .enter()
         .append("rect")
         .attr("x", d => x(d.platform))
-        .attr("y", d => y(d.count))
+        .attr("y", d => y(d.total_titles)) // Changé ici
         .attr("width", x.bandwidth())
-        .attr("height", d => height - y(d.count))
+        .attr("height", d => height - y(d.total_titles)) // Changé ici
         .attr("fill", "#4e79a7");
 
     // Axes
@@ -78,6 +83,7 @@ function drawBarChart(data) {
         .text("Volume de contenu par plateforme");
 }
 
+
 // --- FONCTION : GRAPHIQUE LINÉAIRE (Tendances Annuelles) ---
 function drawLineChart(data) {
     const svg = d3.select("#line-chart")
@@ -87,7 +93,7 @@ function drawLineChart(data) {
         .append("g")
         .attr("transform", `translate(${margin.left},${margin.top})`);
 
-    // Trier les données par année pour éviter une ligne brisée
+    // Trier les données par année
     data.sort((a, b) => a.release_year - b.release_year);
 
     // Échelles
@@ -96,13 +102,13 @@ function drawLineChart(data) {
         .range([0, width]);
 
     const y = d3.scaleLinear()
-        .domain([0, d3.max(data, d => d.count)])
+        .domain([0, d3.max(data, d => d.total_titles)]) // Changé ici
         .range([height, 0]);
 
     // Définir la ligne
     const line = d3.line()
         .x(d => x(d.release_year))
-        .y(d => y(d.count));
+        .y(d => y(d.total_titles)); // Changé ici
 
     // Dessin de la ligne
     svg.append("path")
@@ -115,7 +121,7 @@ function drawLineChart(data) {
     // Axes
     svg.append("g")
         .attr("transform", `translate(0,${height})`)
-        .call(d3.axisBottom(x).format(d3.format("d"))); // format "d" pour éviter les virgules sur les années
+        .call(d3.axisBottom(x).tickFormat(d3.format("d"))); // tickFormat corrigé ici
 
     svg.append("g").call(d3.axisLeft(y));
 
