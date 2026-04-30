@@ -66,7 +66,7 @@ d3.csv("data/streaming_catalog.csv").then(function(data) {
             return { platform, Movie: movies, "TV Show": shows, total: movies + shows };
         }).filter(d => d.platform && d.platform !== "NaN" && d.total > 0).sort((a,b) => b.total - a.total);
         
-        if (platformsData.length > 1) { 
+        if (selectedPlatform === "All" && platformsData.length > 0) { 
             d3.select("#stacked-bar-chart").style("display", "block");
             drawStackedBarChart(platformsData);
         } else {
@@ -83,7 +83,7 @@ d3.csv("data/streaming_catalog.csv").then(function(data) {
           .sort((a, b) => b.avgImdb - a.avgImdb)
           .slice(0, 10);
         
-        if (genreStats.length > 1) { 
+        if (genreStats.length > 0) { 
             d3.select("#rating-bar-chart").style("display", "block");
             drawRatingBarChart(genreStats);
         } else {
@@ -95,7 +95,7 @@ d3.csv("data/streaming_catalog.csv").then(function(data) {
             return { genre, count: values.length };
         }).filter(d => d.genre && d.genre !== "NaN" && d.count > 0).sort((a, b) => b.count - a.count);
 
-        if (donutData.length > 1) {
+        if (selectedGenre === "All" && donutData.length > 0) {
             d3.select("#donut-chart").style("display", "block");
             const topGenres = donutData.slice(0, 5);
             if (donutData.length > 5) {
@@ -184,7 +184,7 @@ function drawRatingBarChart(data) {
        .style("font-size", "11px")
        .text(d => d.avgImdb.toFixed(1));
 
-    svg.append("text").attr("x", width/2).attr("y", -10).attr("text-anchor", "middle").text("Top 10 Genres par Note IMDb");
+    svg.append("text").attr("x", width/2).attr("y", -10).attr("text-anchor", "middle").text("Note IMDb Moyenne");
 }
 
 function drawDonutChart(data) {
