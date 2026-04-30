@@ -29,7 +29,7 @@ h1 {
     font-weight: bold;
 }
 
-select, input[type="number"] {
+select, input[type="number"], input[type="range"] {
     padding: 8px;
     border-radius: 4px;
     border: 1px solid #ccc;

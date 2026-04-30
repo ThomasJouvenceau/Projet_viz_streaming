@@ -4,15 +4,19 @@ const height = 350 - margin.top - margin.bottom;
 
 d3.csv("data/streaming_catalog.csv").then(function(data) {
     
+    // Nettoyage et conversion des données
     data.forEach(d => {
         d.release_year = +d.release_year;
         d.imdb_rating = +d.imdb_rating;
     });
 
+    // Listes uniques pour les filtres
     const platforms = [...new Set(data.map(d => d.platform))].filter(Boolean).sort();
     const countries = [...new Set(data.map(d => d.country))].filter(Boolean).sort();
     const genres = [...new Set(data.map(d => d.primary_genre))].filter(Boolean).sort();
+    const types = [...new Set(data.map(d => d.type))].filter(Boolean).sort();
 
+    // Remplissage dynamique des menus déroulants
     const populateSelect = (id, options) => {
         const select = d3.select(id);
         options.forEach(opt => {
@@ -23,6 +27,7 @@ d3.csv("data/streaming_catalog.csv").then(function(data) {
     populateSelect("#platformSelect", platforms);
     populateSelect("#countrySelect", countries);
     populateSelect("#genreSelect", genres);
+    populateSelect("#typeSelect", types);
 
     function updateDashboard() {
         const selectedPlatform = d3.select("#platformSelect").property("value");
@@ -31,7 +36,12 @@ d3.csv("data/streaming_catalog.csv").then(function(data) {
         const selectedType = d3.select("#typeSelect").property("value");
         const yearStart = +d3.select("#yearStart").property("value");
         const yearEnd = +d3.select("#yearEnd").property("value");
+        
+        // Valeur du slider pour le nuage de points
+        const minVolume = +d3.select("#minVolume").property("value");
+        d3.select("#volumeLabel").text(minVolume);
 
+        // Application des filtres globaux
         let filteredData = data.filter(d => d.release_year >= yearStart && d.release_year <= yearEnd);
 
         if (selectedPlatform !== "All") filteredData = filteredData.filter(d => d.platform === selectedPlatform);
@@ -39,22 +49,22 @@ d3.csv("data/streaming_catalog.csv").then(function(data) {
         if (selectedGenre !== "All") filteredData = filteredData.filter(d => d.primary_genre === selectedGenre);
         if (selectedType !== "All") filteredData = filteredData.filter(d => d.type === selectedType);
 
+        // Vider les graphiques
         d3.select("#stacked-bar-chart").html(""); 
         d3.select("#donut-chart").html(""); 
         d3.select("#line-chart").html("");
         d3.select("#scatter-plot").html("");
 
-        // 1. Line Chart (Tendances)
+        // 1. Line Chart
         const yearCounts = d3.rollup(filteredData, v => v.length, d => d.release_year);
         const lineData = Array.from(yearCounts, ([release_year, total_titles]) => ({release_year, total_titles}))
                              .filter(d => d.release_year >= yearStart && d.release_year <= yearEnd)
                              .sort((a, b) => a.release_year - b.release_year);
         if (lineData.length > 0) drawLineChart(lineData);
 
-        // 2. Stacked Bar Chart (Plateformes)
+        // 2. Stacked Bar Chart (Apparaît uniquement si Platform = "All")
         if (selectedPlatform === "All") {
             d3.select("#stacked-bar-chart").style("display", "block");
-            
             const platformsData = Array.from(d3.group(filteredData, d => d.platform), ([platform, values]) => {
                 const movies = values.filter(v => v.type === "Movie").length;
                 const shows = values.filter(v => v.type === "TV Show").length;
@@ -66,18 +76,21 @@ d3.csv("data/streaming_catalog.csv").then(function(data) {
             d3.select("#stacked-bar-chart").style("display", "none");
         }
 
-        // 3. Scatter Plot (Qualité vs Quantité par Genre)
+        // 3. Scatter Plot (Filtre par minVolume appliqué ici)
         const genreStats = Array.from(d3.group(filteredData, d => d.primary_genre), ([genre, values]) => {
             const count = values.length;
             const validRatings = values.filter(v => v.imdb_rating > 0);
             const avgImdb = validRatings.length > 0 ? d3.mean(validRatings, d => d.imdb_rating) : 0;
             return { genre, count, avgImdb };
-        }).filter(d => d.genre && d.genre !== "NaN" && d.avgImdb > 0);
+        }).filter(d => d.genre && d.genre !== "NaN" && d.avgImdb > 0 && d.count >= minVolume);
         
         if (genreStats.length > 0) drawScatterPlot(genreStats);
 
-        // 4. Donut Chart (Top Genres)
-        let genreData = [...genreStats].sort((a, b) => b.count - a.count);
+        // 4. Donut Chart
+        let genreData = Array.from(d3.group(filteredData, d => d.primary_genre), ([genre, values]) => {
+            return { genre, count: values.length };
+        }).filter(d => d.genre && d.genre !== "NaN").sort((a, b) => b.count - a.count);
+
         const topGenres = genreData.slice(0, 5);
         if (genreData.length > 5) {
             const othersCount = d3.sum(genreData.slice(5), d => d.count);
@@ -86,10 +99,14 @@ d3.csv("data/streaming_catalog.csv").then(function(data) {
         if (topGenres.length > 0) drawDonutChart(topGenres);
     }
 
+    // Écouteurs d'événements
     d3.selectAll("select, input").on("change", updateDashboard);
+    d3.selectAll("input").on("input", updateDashboard);
+
     updateDashboard();
 
 }).catch(err => console.error("Erreur : ", err));
+
 
 function drawLineChart(data) {
     const svg = d3.select("#line-chart").append("svg")
@@ -130,7 +147,7 @@ function drawStackedBarChart(data) {
        .selectAll("text").attr("transform", "rotate(-45)").style("text-anchor", "end");
     svg.append("g").call(d3.axisLeft(y));
     svg.append("text").attr("x", width/2).attr("y", -10).attr("text-anchor", "middle").text("Films vs Séries par Plateforme");
-
+    
     // Légende
     const legend = svg.append("g").attr("transform", `translate(${width - 80}, 0)`);
     keys.forEach((key, i) => {
@@ -147,22 +164,27 @@ function drawScatterPlot(data) {
         .append("g").attr("transform", `translate(${margin.left},${margin.top})`);
 
     const x = d3.scaleLinear().domain([0, d3.max(data, d => d.count) * 1.1]).range([0, width]);
-    const y = d3.scaleLinear().domain([d3.min(data, d => d.avgImdb) - 0.5, 10]).range([height, 0]);
+    
+    // Zoom dynamique sur l'axe Y (Notes)
+    const minRating = d3.min(data, d => d.avgImdb) - 0.2;
+    const maxRating = d3.max(data, d => d.avgImdb) + 0.2;
+    const y = d3.scaleLinear().domain([minRating || 0, maxRating || 10]).range([height, 0]);
 
     svg.append("g").attr("transform", `translate(0,${height})`).call(d3.axisBottom(x));
     svg.append("g").call(d3.axisLeft(y));
 
     svg.selectAll("circle").data(data).enter().append("circle")
        .attr("cx", d => x(d.count)).attr("cy", d => y(d.avgImdb))
-       .attr("r", 5).attr("fill", "#76b7b2").attr("opacity", 0.7);
+       .attr("r", 6).attr("fill", "#76b7b2").attr("opacity", 0.7);
 
-    svg.selectAll(".label").data(data.filter(d => d.count > d3.max(data, v => v.count) * 0.1)).enter().append("text")
+    // Ajout des étiquettes (labels)
+    svg.selectAll(".label").data(data).enter().append("text")
        .attr("class", "label").attr("x", d => x(d.count) + 8).attr("y", d => y(d.avgImdb) + 4)
        .text(d => d.genre).style("font-size", "10px");
 
-    svg.append("text").attr("x", width/2).attr("y", height + 40).style("text-anchor", "middle").text("Volume de titres");
-    svg.append("text").attr("transform", "rotate(-90)").attr("x", -height/2).attr("y", -40).style("text-anchor", "middle").text("Note IMDb Moyenne");
-    svg.append("text").attr("x", width/2).attr("y", -10).attr("text-anchor", "middle").text("Qualité vs Quantité (par Genre)");
+    svg.append("text").attr("x", width/2).attr("y", height + 35).style("text-anchor", "middle").style("font-size", "12px").text("Volume de titres");
+    svg.append("text").attr("transform", "rotate(-90)").attr("x", -height/2).attr("y", -35).style("text-anchor", "middle").style("font-size", "12px").text("Note IMDb Moyenne");
+    svg.append("text").attr("x", width/2).attr("y", -10).attr("text-anchor", "middle").text("Qualité vs Quantité");
 }
 
 function drawDonutChart(data) {
@@ -181,7 +203,7 @@ function drawDonutChart(data) {
     const arcs = svg.selectAll("arc").data(pie(data)).enter().append("g");
     arcs.append("path").attr("d", arc).attr("fill", d => color(d.data.genre)).attr("stroke", "white").style("stroke-width", "2px");
     arcs.append("text").attr("transform", d => `translate(${arc.centroid(d)[0] * 1.5}, ${arc.centroid(d)[1] * 1.5})`)
-        .attr("text-anchor", "middle").style("font-weight", "bold").text(d => `${d.data.genre} (${d.data.count})`);
+        .attr("text-anchor", "middle").style("font-size", "11px").style("font-weight", "bold").text(d => `${d.data.genre} (${d.data.count})`);
 
     svg.append("text").attr("x", 0).attr("y", - (fullHeight / 2) + 15).attr("text-anchor", "middle").text("Top 5 Genres");
 }
