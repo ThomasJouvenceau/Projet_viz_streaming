@@ -55,7 +55,7 @@ d3.csv("data/streaming_catalog.csv").then(function(data) {
                              .filter(d => d.release_year > 1900)
                              .sort((a, b) => a.release_year - b.release_year);
 
-        d3.select("#bar-chart").html(""); 
+        d3.select("#donut-chart").html(""); 
         d3.select("#line-chart").html("");
 
         if (topGenres.length > 0) drawDonutChart(topGenres);
@@ -75,7 +75,7 @@ function drawDonutChart(data) {
     const fullHeight = height + margin.top + margin.bottom;
     const radius = Math.min(fullWidth, fullHeight) / 2 - 20;
 
-    const svg = d3.select("#bar-chart")
+    const svg = d3.select("#donut-chart")
         .append("svg")
         .attr("width", fullWidth)
         .attr("height", fullHeight)
