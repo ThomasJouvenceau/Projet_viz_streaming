@@ -1,4 +1,3 @@
-/* Configuration générale */
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background-color: #f4f7f6;
@@ -13,7 +12,6 @@ h1 {
     margin-bottom: 30px;
 }
 
-/* Zone des contrôles (Filtres) */
 #controls {
     background: white;
     padding: 15px;
@@ -35,7 +33,6 @@ select {
     cursor: pointer;
 }
 
-/* Dashboard : Mise en page côte à côte */
 .dashboard {
     display: flex;
     flex-wrap: wrap;
@@ -43,34 +40,25 @@ select {
     gap: 20px;
 }
 
-/* Conteneurs de graphiques */
-#line-chart, #bar-chart {
+#line-chart, #bar-chart, #donut-chart {
     background: white;
     padding: 20px;
     border-radius: 8px;
     box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    min-width: 500px;
+    flex: 1 1 30%;
+    min-width: 400px; 
 }
 
-/* Style des éléments SVG de D3.js */
 svg text {
     font-size: 12px;
     fill: #666;
 }
 
-.axis-label {
-    font-size: 14px;
-    font-weight: bold;
-    fill: #333;
-}
-
-/* Effet au survol des barres */
 rect:hover {
     fill: #2980b9;
     transition: fill 0.2s;
 }
 
-/* Style de la ligne du Line Chart */
 path {
     transition: stroke-dashoffset 2s;
 }
