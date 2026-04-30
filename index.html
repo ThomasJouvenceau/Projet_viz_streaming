@@ -29,25 +29,17 @@
         <span> à </span>
         <input type="number" id="yearEnd" value="2026" min="1900" max="2026" step="1">
 
-        <label for="minVolume" style="margin-left: 20px;">Volume minimum (Nuage) : <span id="volumeLabel">10</span></label>
-        <input type="range" id="minVolume" min="1" max="200" value="10" step="5">
+        <div class="slider-container">
+            <label for="minVolume">Volume minimum : <span id="volumeLabel">10</span> titres</label>
+            <input type="range" id="minVolume" min="1" max="500" value="10" step="5">
+        </div>
     </div>
 
     <div class="dashboard">
         <div id="line-chart"></div>
         <div id="stacked-bar-chart"></div>
-        <div id="scatter-plot"></div>
+        <div id="rating-bar-chart"></div>
         <div id="donut-chart"></div>
-    </div>
-
-    <div style="margin-top: 50px; padding: 20px; background: #eee; border-radius: 8px;">
-        <h3>Documentation</h3>
-        <ul>
-            <li><strong>Évolution temporelle :</strong> Sorties par année.</li>
-            <li><strong>Barres empilées (Toutes plateformes uniquement) :</strong> Volume par plateforme divisé entre Films et Séries.</li>
-            <li><strong>Nuage de points :</strong> Relation entre le volume (Quantité) et la note moyenne IMDb (Qualité) par genre. Le curseur "Volume minimum" permet d'exclure les genres ayant trop peu de titres.</li>
-            <li><strong>Donut Chart :</strong> Top 5 des genres pour la sélection active.</li>
-        </ul>
     </div>
 
     <script src="main.js"></script>
